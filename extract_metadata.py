@@ -22,17 +22,33 @@ def extract_text_from_pdf(pdf_path):
         return ""
 
 def extract_year_from_filename(filename):
-    """Extract year from filename like '2001_Melissa_Yates.pdf'"""
-    match = re.match(r'(\d{4})_', filename)
+    """Extract year from filename like '2001_Melissa_Yates.pdf' or '2004 Elizabeth A. Allan.pdf'"""
+    match = re.match(r'(\d{4})[\s_]', filename)
     return match.group(1) if match else ""
 
 def extract_author_from_filename(filename):
-    """Extract author name from filename"""
+    """Extract author name from filename and format as 'Last, First'"""
     # Remove year prefix and .pdf extension
-    name_part = re.sub(r'^\d{4}_', '', filename)
+    name_part = re.sub(r'^\d{4}[\s_]+', '', filename)
     name_part = re.sub(r'\.pdf$', '', name_part)
     # Replace underscores with spaces
-    return name_part.replace('_', ' ')
+    name_part = name_part.replace('_', ' ')
+    
+    # Parse the name to convert to "Last, First" format
+    # Handle cases like "Elizabeth A. Allan" or "Joe Wlos" or "Bethany Chinedu Willig-Onwuachi"
+    parts = name_part.split()
+    
+    if len(parts) >= 2:
+        # Check if last part is a hyphenated last name or simple last name
+        last_name = parts[-1]
+        first_parts = parts[:-1]
+        
+        # Format as "Last, First Middle"
+        formatted_name = f"{last_name}, {' '.join(first_parts)}"
+        return formatted_name
+    else:
+        # Fallback if parsing fails
+        return name_part
 
 def analyze_pdf_content(pdf_path, text):
     """Analyze PDF content and generate metadata"""
@@ -54,58 +70,77 @@ def analyze_pdf_content(pdf_path, text):
     
     # Try to extract title from text if available
     if text and len(text.strip()) > 20:
-        # Split into lines for better analysis
-        lines = text.split('\n')
-        
-        # Look for title - it usually appears after author name/page number and before "By:" or "Introduction"
-        title_lines = []
-        started = False
-        
-        for i, line in enumerate(lines):
-            line_strip = line.strip()
-            
-            # Skip empty lines and very short lines at the start
-            if not started and (not line_strip or len(line_strip) < 4 or line_strip.isdigit()):
-                continue
-            
-            # Skip author name fragments at the beginning
-            if not started and any(name.lower() in line_strip.lower() for name in author.split()[:2]):
-                continue
-            
-            # Start collecting when we hit a substantive line
-            if not started and len(line_strip) >= 4:
-                started = True
-            
-            # Stop at markers
-            if line_strip.lower() in ['by:', 'introduction', 'abstract', 'intr oduction'] or line_strip.lower().startswith('by:'):
-                break
-            
-            # Collect title lines
-            if started and line_strip and not line_strip.isdigit():
-                title_lines.append(line_strip)
-                # Safety limit
-                if len(' '.join(title_lines)) > 250:
-                    break
-        
-        if title_lines:
-            # Join and clean
-            potential_title = ' '.join(title_lines)
-            # Remove "By:" suffix if present
-            potential_title = re.sub(r'\s*By:\s*$', '', potential_title, flags=re.IGNORECASE)
-            # Remove fragments of author's last name at the start
-            words = potential_title.split()
-            if len(words) > 3:
-                # Check if first two words form author's last name (e.g., "W illig" -> "Willig")
-                first_two_joined = (words[0] + words[1]).lower()
-                author_last = author.split()[-1].lower().replace('-', '').replace(' ', '')
-                if first_two_joined in author_last or author_last.startswith(first_two_joined):
-                    # Skip first two words
-                    potential_title = ' '.join(words[2:])
-            # Clean spacing
-            potential_title = re.sub(r'\s+', ' ', potential_title).strip()
-            
-            if 10 < len(potential_title) < 300:
+        # Check for title between pipes (e.g., "Author | Title | Page")
+        pipe_match = re.search(r'\|\s*([^|]{10,100})\s*\|', text[:200])
+        if pipe_match:
+            potential_title = pipe_match.group(1).strip()
+            # Make sure it's not a page number or author name
+            if not potential_title.isdigit() and potential_title.lower() not in author.lower():
                 title = potential_title
+        
+        # Check for title in quotes if no pipe title found
+        if not title:
+            quote_match = re.search(r'"([^"]{10,100})"', text[:1000])
+            if quote_match:
+                potential_title = quote_match.group(1)
+                # Make sure it's not just a quote from the abstract
+                if 'abstract' not in potential_title.lower():
+                    title = potential_title
+        
+        # If no quoted title found, try line-based extraction
+        if not title:
+            # Split into lines for better analysis
+            lines = text.split('\n')
+            
+            # Look for title - it usually appears after author name/page number and before "By:" or "Introduction"
+            title_lines = []
+            started = False
+            
+            for i, line in enumerate(lines):
+                line_strip = line.strip()
+                
+                # Skip empty lines and very short lines at the start
+                if not started and (not line_strip or len(line_strip) < 4 or line_strip.isdigit()):
+                    continue
+                
+                # Skip author name fragments at the beginning
+                if not started and any(name.lower() in line_strip.lower() for name in author.split()[:2]):
+                    continue
+                
+                # Start collecting when we hit a substantive line
+                if not started and len(line_strip) >= 4:
+                    started = True
+                
+                # Stop at markers
+                if line_strip.lower() in ['by:', 'introduction', 'abstract', 'intr oduction'] or line_strip.lower().startswith('by:'):
+                    break
+                
+                # Collect title lines
+                if started and line_strip and not line_strip.isdigit():
+                    title_lines.append(line_strip)
+                    # Safety limit
+                    if len(' '.join(title_lines)) > 250:
+                        break
+            
+            if title_lines:
+                # Join and clean
+                potential_title = ' '.join(title_lines)
+                # Remove "By:" suffix if present
+                potential_title = re.sub(r'\s*By:\s*$', '', potential_title, flags=re.IGNORECASE)
+                # Remove fragments of author's last name at the start
+                words = potential_title.split()
+                if len(words) > 3:
+                    # Check if first two words form author's last name (e.g., "W illig" -> "Willig")
+                    first_two_joined = (words[0] + words[1]).lower()
+                    author_last = author.split(',')[0].lower().replace('-', '').replace(' ', '')  # Use formatted author (Last, First)
+                    if first_two_joined in author_last or author_last.startswith(first_two_joined):
+                        # Skip first two words
+                        potential_title = ' '.join(words[2:])
+                # Clean spacing
+                potential_title = re.sub(r'\s+', ' ', potential_title).strip()
+                
+                if 10 < len(potential_title) < 300:
+                    title = potential_title
         
         # Alternative: Look for title pattern after author name
         if not title:
@@ -140,10 +175,10 @@ def analyze_pdf_content(pdf_path, text):
         # Clean text for easier searching
         text_clean = ' '.join(text.split())
         
-        # Look for introduction paragraph
+        # Look for abstract section with various patterns
         patterns = [
+            (r'Abstract[:\s]+(.*?)(?:Genesis|Introduction|Keywords|Chapter)', 500),
             (r'(?:Intr oduction|Introduction)[:\s]+(.*?)(?:As I have|Recently|Further|Throughout|In this essay)', 500),
-            (r'(?:Abstract)[:\s]+(.*?)(?:Introduction|Keywords|Chapter)', 500),
             (r'(?:Intr oduction|Introduction)[:\s]+(.{50,600})\.', 500),
         ]
         
@@ -231,8 +266,11 @@ def analyze_pdf_content(pdf_path, text):
 def generate_metadata_csv(pdf_dir, output_csv, csv_headers):
     """Generate CSV with Dublin Core metadata for all PDFs"""
     
-    # Get all PDF files
-    pdf_files = sorted([f for f in os.listdir(pdf_dir) if f.endswith('.pdf')])
+    # Get all PDF files (handle both underscore and space naming)
+    all_files = os.listdir(pdf_dir)
+    pdf_files = sorted([f for f in all_files if f.endswith('.pdf')])
+    
+    print(f"Found {len(pdf_files)} PDF files")
     
     # Prepare data rows
     rows = []
@@ -255,7 +293,8 @@ def generate_metadata_csv(pdf_dir, output_csv, csv_headers):
         # Map metadata to appropriate columns
         row['file_name_1'] = metadata['filename']
         row['dc:title'] = metadata['title']
-        row['dc:creator'] = metadata['author']
+        # Format creator as "Last, First (Class of YYYY)"
+        row['dc:creator'] = f"{metadata['author']} (Class of {metadata['year']})"
         row['dc:date'] = metadata['year']
         row['dcterms:issued'] = metadata['year']
         row['dcterms:created'] = metadata['year']

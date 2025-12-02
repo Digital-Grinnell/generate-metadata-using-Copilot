@@ -200,3 +200,95 @@ The system now assigns proper Library of Congress Subject Headings to the `dcter
 
 The updated CSV file maintains full compatibility with Alma-D while providing more accurate, standardized subject headings for better discoverability and interoperability with library systems.
 
+---
+
+## Update: Replaced PDFs and Updated Creator Format
+
+### User Request
+
+> Two of the PDF files have been replaced with corrected copies. Please repeat previous metadata generation for these new PDF files. When populating the dc:creator column please structure the data in 'last name, first name' format and append '(Class of xxxx)' to that field where xxxx is the dc:date value. Append this prompt and response to the session_summary.md file.
+
+### Response Summary
+
+The metadata has been successfully regenerated with the replaced PDF files and updated creator formatting.
+
+### Changes Implemented
+
+1. **Replaced PDFs processed**:
+   - `2004 Elizabeth A. Allan.pdf`: Now 19 pages (was 1-page placeholder)
+   - `2015 Joe Wlos.pdf`: Now 19 pages with extractable content (was 1-page placeholder)
+
+2. **Creator format updated**: All entries now use "Last, First (Class of YYYY)" format
+   - Example: `Willig-Onwuachi, Bethany Chinedu (Class of 2023)`
+   - Example: `Wlos, Joe (Class of 2015)`
+
+3. **Improved title extraction**:
+   - Added support for titles between pipe characters (e.g., `| Title |`)
+   - 2015 PDF now correctly shows "Uncommon Carriers" instead of generic title
+   - Handles both underscore and space-separated filenames
+
+4. **File naming compatibility**: Script now handles PDF files with both naming conventions:
+   - Underscore format: `2001_Melissa_Yates.pdf`
+   - Space format: `2004 Elizabeth A. Allan.pdf`
+
+### Final Metadata Results
+
+1. **2001_Melissa_Yates.pdf**
+   - Title: Student Scholarship by Yates, Melissa
+   - Creator: Yates, Melissa (Class of 2001)
+   - Extent: 20 pages
+   - LCSH: Students | College students | Scholarships
+
+2. **2004 Elizabeth A. Allan.pdf** ⭐ (Replaced)
+   - Title: Student Scholarship by Allan, Elizabeth A.
+   - Creator: Allan, Elizabeth A. (Class of 2004)
+   - Extent: 19 pages
+   - LCSH: Students | College students | Scholarships
+   - Note: Scanned document, no extractable text
+
+3. **2008_Nathan_Redman.pdf**
+   - Title: Student Scholarship by Redman, Nathan
+   - Creator: Redman, Nathan (Class of 2008)
+   - Extent: 17 pages
+   - LCSH: Students | College students | Scholarships
+
+4. **2010_Joseph_Maloney.pdf**
+   - Title: Student Scholarship by Maloney, Joseph
+   - Creator: Maloney, Joseph (Class of 2010)
+   - Extent: 23 pages
+   - LCSH: Students | College students | Scholarships
+
+5. **2015 Joe Wlos.pdf** ⭐ (Replaced)
+   - Title: Uncommon Carriers
+   - Creator: Wlos, Joe (Class of 2015)
+   - Extent: 19 pages
+   - LCSH: Political science | Research
+   - Note: Text-based PDF with extracted title about net neutrality and common carriers
+
+6. **2023_Bethany_Chinedu_Willig-Onwuachi.pdf**
+   - Title: Critical Fabulation for Survival: Knowledge of Pr e-colonial Gender in Igbo Cultur e to Sustain Queer Imaginings of Car e
+   - Creator: Willig-Onwuachi, Bethany Chinedu (Class of 2023)
+   - Extent: 17 pages
+   - LCSH: Gender identity | Sex role | Sexual minorities | Gender-nonconforming people | Colonialism | Postcolonialism
+   - Abstract: Through legislation and social code, modern-day Nigeria has become a hostile and dangerous country for queer people...
+
+7. **2025_Isabella_Nesbeth.pdf**
+   - Title: Student Scholarship by Nesbeth, Isabella
+   - Creator: Nesbeth, Isabella (Class of 2025)
+   - Extent: 17 pages
+   - LCSH: Students | College students | Scholarships
+
+### Technical Enhancements
+
+- **Name parsing**: Automated conversion from filename to "Last, First" format
+- **Hyphenated names**: Correctly handles names like "Willig-Onwuachi"
+- **Middle initials**: Preserves middle names and initials (e.g., "Allan, Elizabeth A.")
+- **Title extraction patterns**:
+  - Pipe-delimited titles: `| Title |`
+  - Quoted titles: `"Title"`
+  - Multi-line titles with cleanup of author name fragments
+- **Year extraction**: Handles both underscore and space separators
+
+All 7 PDFs now have complete metadata with the standardized creator format ready for Alma-D import.
+
+
