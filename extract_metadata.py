@@ -171,38 +171,52 @@ def analyze_pdf_content(pdf_path, text):
     if not abstract or len(abstract) < 50:
         abstract = f"Student scholarship work by {author}, completed in {year} at Grinnell College."
     
-    # Try to identify subjects from title and content
-    subjects = []
+    # Try to identify LCSH (Library of Congress Subject Headings) from title and content
+    lcsh_subjects = []
     title_lower = title.lower()
     text_sample = (text[:2000].lower() if text else "")
     
-    # Common academic subject keywords
-    subject_keywords = {
-        'gender': 'Gender Studies',
-        'queer': 'Queer Studies',
-        'lgbtq': 'LGBTQ Studies',
-        'colonial': 'Colonial History',
-        'nigeria': 'African Studies',
-        'identity': 'Identity Studies',
-        'diaspora': 'Diaspora Studies',
-        'race': 'Race Studies',
-        'culture': 'Cultural Studies',
-        'history': 'History',
-        'sociology': 'Sociology',
-        'anthropology': 'Anthropology',
-        'literature': 'Literature',
-        'politics': 'Political Science',
-        'economics': 'Economics',
-        'environment': 'Environmental Studies',
-        'science': 'Science'
+    # Map keywords to proper LCSH subject headings
+    lcsh_mappings = {
+        'gender': ['Gender identity', 'Sex role'],
+        'queer': ['Sexual minorities', 'Gender-nonconforming people'],
+        'lgbtq': ['Sexual minorities', 'LGBTQ+ people'],
+        'transgender': ['Transgender people'],
+        'colonial': ['Colonialism', 'Postcolonialism'],
+        'nigeria': ['Nigeria--History', 'Igbo (African people)'],
+        'igbo': ['Igbo (African people)'],
+        'african': ['Africa--Study and teaching'],
+        'identity': ['Identity (Psychology)', 'Group identity'],
+        'diaspora': ['Diaspora'],
+        'race': ['Race relations', 'Racism'],
+        'culture': ['Culture', 'Cross-cultural studies'],
+        'history': ['History'],
+        'sociology': ['Sociology'],
+        'anthropology': ['Anthropology'],
+        'ethnography': ['Ethnology'],
+        'literature': ['Literature'],
+        'politics': ['Political science'],
+        'political': ['Political science'],
+        'economics': ['Economics'],
+        'environment': ['Environmental sciences'],
+        'climate': ['Climatic changes'],
+        'education': ['Education'],
+        'student': ['Students', 'College students'],
+        'scholarship': ['Scholarships'],
+        'essay': ['Essays'],
+        'research': ['Research']
     }
     
-    for keyword, subject in subject_keywords.items():
+    # Collect matching LCSH terms
+    for keyword, lcsh_terms in lcsh_mappings.items():
         if keyword in title_lower or keyword in text_sample:
-            if subject not in subjects:
-                subjects.append(subject)
-                if len(subjects) >= 5:
-                    break
+            for term in lcsh_terms:
+                if term not in lcsh_subjects:
+                    lcsh_subjects.append(term)
+                    if len(lcsh_subjects) >= 6:
+                        break
+        if len(lcsh_subjects) >= 6:
+            break
     
     return {
         'filename': filename,
@@ -211,7 +225,7 @@ def analyze_pdf_content(pdf_path, text):
         'year': year,
         'abstract': abstract,
         'pages': page_count,
-        'subjects': subjects
+        'lcsh_subjects': lcsh_subjects
     }
 
 def generate_metadata_csv(pdf_dir, output_csv, csv_headers):
@@ -266,13 +280,13 @@ def generate_metadata_csv(pdf_dir, output_csv, csv_headers):
             row['dc:description'] = metadata['abstract']
             row['dcterms:abstract'] = metadata['abstract']
         
-        # Add subjects
-        if metadata.get('subjects'):
-            # Put subjects in available LCSH fields, using | separator for multiple
-            subject_str = '|'.join(metadata['subjects'])
-            row['dc:subject'] = subject_str
+        # Add LCSH subjects using pipe separator for multiple values
+        if metadata.get('lcsh_subjects'):
+            row['dcterms:subject.dcterms:LCSH'] = '|'.join(metadata['lcsh_subjects'])
+            # Also add to general subject field
+            row['dc:subject'] = '|'.join(metadata['lcsh_subjects'])
         
-        # Add common "is part of" values
+        # Add common "is part of" values (using pipe separator)
         row['dcterms:isPartOf'] = "Digital Grinnell|Scholarship at Grinnell|Student Scholarship"
         
         # Add rights statement
