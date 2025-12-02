@@ -355,9 +355,11 @@ def main():
         reader = csv.reader(f)
         csv_headers = next(reader)
     
-    # Generate metadata CSV
+    # Generate metadata CSV with timestamp
+    from datetime import datetime
+    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
     pdf_dir = '/Users/mcfatem/GitHub/generate-metadata-using-Copilot'
-    output_csv = '/Users/mcfatem/GitHub/generate-metadata-using-Copilot/metadata_output.csv'
+    output_csv = f'/Users/mcfatem/GitHub/generate-metadata-using-Copilot/metadata_output_{timestamp}.csv'
     
     generate_metadata_csv(pdf_dir, output_csv, csv_headers)
 
